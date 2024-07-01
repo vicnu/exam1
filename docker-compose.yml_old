@@ -1,0 +1,46 @@
+services:
+  db:
+    container_name: db
+    image: postgres:13
+    environment:
+      POSTGRES_DB: guteudex
+      POSTGRES_USER: gutendex
+      POSTGRES_PASSWORD: a-long-string-of-random-characters
+      POSTGRES_PORT: 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - gutendex-network
+
+  web:
+    container_name: web
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./project:/usr/src/app
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - gutendex-network
+    
+  nginx:
+    container_name: nginx
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    volumes:
+      - ./project/static:/static
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+    networks:
+      - gutendex-network
+volumes:
+  postgres_data:
+networks:
+  gutendex-network:

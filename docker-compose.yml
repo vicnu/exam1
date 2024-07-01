@@ -1,0 +1,59 @@
+services:
+  db:
+    container_name: db
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=gutendex
+      - POSTGRES_USER=gutendex
+      - POSTGRES_PASSWORD=a-long-string-of-random-characters
+      - POSTGRES_PORT=5432
+    volumes:
+      - /catalog_files:/var/lib/postgresql/data
+    networks:
+      - back-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gutendex -d gutendex -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    container_name: web
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: sh -c "python manage.py collectstatic --noinput && python manage.py migrate && python manage.py updatecatalog && python manage.py runserver 0.0.0.0:8000" 
+    volumes:
+      - .:/usr/src/app
+    env_file:
+      - ./gutendex/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - back-network
+      - front-network
+
+  nginx:
+    container_name: nginx
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    volumes:
+      - ./static:/static/
+    
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+    networks:
+      - front-network
+
+volumes:
+  postgres_data:
+
+networks:
+  back-network:
+  front-network:
